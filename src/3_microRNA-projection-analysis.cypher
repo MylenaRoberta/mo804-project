@@ -27,7 +27,7 @@ CALL gds.graph.project(
 CALL gds.degree.stream('ProjectedNetwork')
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS degree
-ORDER BY degree DESC, mirnaid DESC
+ORDER BY degree DESC, mirnaid ASC
 
 // Calcula a centralidade de grau ponderada dos nós
 CALL gds.degree.stream(
@@ -36,13 +36,13 @@ CALL gds.degree.stream(
 )
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS weightedDegree
-ORDER BY weightedDegree DESC, mirnaid DESC
+ORDER BY weightedDegree DESC, mirnaid ASC
 
 // Calcula a centralidade de intermediação dos nós
 CALL gds.betweenness.stream('ProjectedNetwork')
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS betweenness
-ORDER BY betweenness DESC, mirnaid DESC
+ORDER BY betweenness DESC, mirnaid ASC
 
 // Calcula a centralidade de intermediação ponderada dos nós
 CALL gds.betweenness.stream(
@@ -51,13 +51,13 @@ CALL gds.betweenness.stream(
 )
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS weightedBetweenness
-ORDER BY weightedBetweenness DESC, mirnaid DESC
+ORDER BY weightedBetweenness DESC, mirnaid ASC
 
 // Calcula a centralidade de autovetor dos nós
 CALL gds.eigenvector.stream('ProjectedNetwork')
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS eigenvector
-ORDER BY eigenvector DESC, mirnaid DESC
+ORDER BY eigenvector DESC, mirnaid ASC
 
 // Calcula a centralidade de autovetor ponderada dos nós
 CALL gds.eigenvector.stream(
@@ -69,10 +69,22 @@ CALL gds.eigenvector.stream(
 )
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS weightedEigenvector
-ORDER BY weightedEigenvector DESC, mirnaid DESC
+ORDER BY weightedEigenvector DESC, mirnaid ASC
 
 // Calcula a centralidade de proximidade dos nós
 CALL gds.closeness.stream('ProjectedNetwork')
 YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS mirnaid, score AS closeness
-ORDER BY closeness DESC, mirnaid DESC
+ORDER BY closeness DESC, mirnaid ASC
+
+// Identifica os pontos de articulação da rede
+CALL gds.articulationPoints.stream('ProjectedNetwork')
+YIELD nodeId
+RETURN gds.util.asNode(nodeId).id AS molecule
+ORDER BY molecule ASC
+
+// Identifica as pontes da rede
+CALL gds.bridges.stream('ProjectedNetwork')
+YIELD from, to
+RETURN gds.util.asNode(from).id AS from, gds.util.asNode(to).id AS to
+ORDER BY from ASC, to ASC
