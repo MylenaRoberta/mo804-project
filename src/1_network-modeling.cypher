@@ -1,3 +1,4 @@
+// --- REDE BIPARTIDA ---
 // Limpa o banco de dados
 MATCH (n) DETACH DELETE (n);
 
@@ -32,3 +33,39 @@ MERGE (mirna)-[:INTERACTS_WITH {
 MATCH (mirna:MicroRNA)-[r:INTERACTS_WITH]->(mrna:MessengerRNA)
 RETURN mirna, r, mrna
 LIMIT 300;
+
+// Projeta a rede bipartida para armazenamento no catálogo de grafos
+CALL gds.graph.project(
+    'BipartiteNetwork',
+    ['MicroRNA', 'MessengerRNA'],
+    {
+        INTERACTS_WITH: {
+            orientation: 'UNDIRECTED'
+        }
+    }
+)
+
+// --- REDE PROJETADA SOBRE OS microRNAS ---
+// Projeta a rede bipartida com base nos RNAs mensageiros
+MATCH (mirnaA:MicroRNA)-[:INTERACTS_WITH]->(mrna:MessengerRNA)
+MATCH (mirnaB:MicroRNA)-[:INTERACTS_WITH]->(mrna:MessengerRNA)
+WHERE mirnaA.id < mirnaB.id
+WITH mirnaA, mirnaB, COUNT(mrna) AS commonMrnas
+MERGE (mirnaA)-[r:IS_RELATED_TO]-(mirnaB)
+SET r.commonMrnas = commonMrnas;
+
+// Mostra a rede projetada
+MATCH (mirnaA:MicroRNA)-[r:IS_RELATED_TO]->(mirnaB:MicroRNA)
+RETURN mirnaA, r, mirnaB;
+
+// Projeta a rede de microRNAs para armazenamento no catálogo de grafos
+CALL gds.graph.project(
+    'ProjectedNetwork',
+    'MicroRNA',
+    {
+        IS_RELATED_TO: {
+            orientation: 'UNDIRECTED',
+            properties: ['commonMrnas']
+        }
+    }
+)
