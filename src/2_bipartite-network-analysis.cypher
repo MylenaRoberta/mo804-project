@@ -11,6 +11,11 @@ YIELD nodeId, score
 RETURN gds.util.asNode(nodeId).id AS molecule, score AS betweenness
 ORDER BY betweenness DESC, molecule ASC;
 
+// Remove o nó
+MATCH (mirna:MicroRNA)
+WHERE mirna.id = 'hsa-miR-?'
+DETACH DELETE (mirna);
+
 // Calcula a centralidade de proximidade dos nós
 CALL gds.closeness.stream('BipartiteNetwork')
 YIELD nodeId, score
@@ -51,3 +56,24 @@ ORDER BY localClusteringCoefficient DESC, molecule ASC;
 // Calcula o coeficiente de clusterização global da rede
 CALL gds.localClusteringCoefficient.stats('BipartiteNetwork')
 YIELD averageClusteringCoefficient, nodeCount;
+
+// --- CAMINHOS MÍNIMOS ---
+// Calcula todos os caminhos mínimos entre os microRNAs
+MATCH (mirna:MicroRNA)
+WITH COLLECT(mirna) AS mirnas
+UNWIND mirnas AS mirnaA
+UNWIND mirnas AS mirnaB
+WITH mirnaA, mirnaB
+WHERE mirnaA.id < mirnaB.id
+MATCH p = allShortestPaths((mirnaA)-[:INTERACTS_WITH*1..10]-(mirnaB))
+WITH mirnaA, mirnaB, p, LENGTH(p) AS minPathLength
+UNWIND NODES(p) AS nodesInPaths
+WITH mirnaA, mirnaB, minPathLength, nodesInPaths
+WHERE nodesInPaths:MessengerRNA
+RETURN 
+    mirnaA.id AS miRa, 
+    mirnaB.id AS miRb, 
+    minPathLength, 
+    COUNT(DISTINCT nodesInPaths.id) AS totalMrnasInPaths, 
+    COLLECT(DISTINCT nodesInPaths.id) AS mrnasInPaths
+ORDER BY minPathLength DESC, totalMrnasInPaths DESC;
