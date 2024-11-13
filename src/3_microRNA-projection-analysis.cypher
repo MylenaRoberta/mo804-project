@@ -69,3 +69,49 @@ ORDER BY localClusteringCoefficient DESC, miR ASC;
 // Calcula o coeficiente de clusterização global da rede
 CALL gds.localClusteringCoefficient.stats('ProjectedNetwork')
 YIELD averageClusteringCoefficient, nodeCount;
+
+// Identifica as comunidades da rede
+CALL gds.louvain.stream('ProjectedNetwork')
+YIELD nodeId, communityId
+RETURN gds.util.asNode(nodeId).id AS miR, communityId
+ORDER BY communityId ASC, miR ASC;
+
+// --- SELEÇÃO DAS ARESTAS MAIS RELEVANTES ---
+// Mostra as interações da rede acompanhadas de peso e da mediana 
+MATCH ()-[r:IS_RELATED_TO]-()
+WITH apoc.agg.median(r.commonMrnas) AS median
+MATCH (mirnaA:MicroRNA)-[r:IS_RELATED_TO]-(mirnaB:MicroRNA)
+RETURN mirnaA.id AS from, mirnaB.id AS to, r.commonMrnas AS commonMrnas, median
+ORDER BY commonMrnas DESC;
+
+// Filtra as arestas mais relevantes da rede
+MATCH ()-[r:IS_RELATED_TO]->()
+WITH apoc.agg.median(r.commonMrnas) AS median
+MATCH (mirnaA:MicroRNA)-[r:IS_RELATED_TO]->(mirnaB:MicroRNA)
+WHERE r.commonMrnas > median
+WITH mirnaA, mirnaB, r
+MERGE (mirnaA)-[sr:IS_STRONGLY_RELATED_TO]-(mirnaB)
+SET sr.commonMrnas = r.commonMrnas;
+
+// Mostra as interações mais relevantes da rede
+MATCH (mirnaA:MicroRNA)-[r:IS_STRONGLY_RELATED_TO]-(mirnaB:MicroRNA)
+RETURN mirnaA.id AS from, mirnaB.id AS to, r.commonMrnas AS commonMrnas
+ORDER BY commonMrnas DESC;
+
+// Projeta a rede de microRNAs com "relações relevantes" para armazenamento no catálogo de grafos
+CALL gds.graph.project(
+   'ProjectedRelevantNetwork',
+   'MicroRNA',
+   {
+      IS_STRONGLY_RELATED_TO: {
+         orientation: 'UNDIRECTED',
+         properties: ['commonMrnas']
+      }
+   }
+)
+
+// Identifica as comunidades da rede relevate
+CALL gds.louvain.stream('ProjectedRelevantNetwork')
+YIELD nodeId, communityId
+RETURN gds.util.asNode(nodeId).id AS miR, communityId
+ORDER BY communityId ASC, miR ASC;

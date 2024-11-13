@@ -57,6 +57,12 @@ ORDER BY localClusteringCoefficient DESC, molecule ASC;
 CALL gds.localClusteringCoefficient.stats('BipartiteNetwork')
 YIELD averageClusteringCoefficient, nodeCount;
 
+// Identifica as comunidades da rede
+CALL gds.louvain.stream('BipartiteNetwork')
+YIELD nodeId, communityId
+RETURN gds.util.asNode(nodeId).id AS miR, communityId
+ORDER BY communityId ASC, miR ASC;
+
 // --- CAMINHOS MÍNIMOS ---
 // Calcula todos os caminhos mínimos entre os microRNAs
 MATCH (mirna:MicroRNA)
